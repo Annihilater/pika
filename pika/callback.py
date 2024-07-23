@@ -7,7 +7,7 @@ import logging
 
 from pika import frame
 from pika import amqp_object
-from pika.compat import xrange, canonical_str
+from pika.compat import canonical_str
 
 LOGGER = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ def name_or_value(value):
     if isinstance(value, amqp_object.AMQPObject):
         return value.NAME
 
-    # Cast the value to a str (python 2 and python 3); encoding as UTF-8 on Python 2
+    # Cast the value to a string
     return canonical_str(value)
 
 
@@ -94,7 +94,7 @@ def check_for_prefix_and_key(function):
     return wrapper
 
 
-class CallbackManager(object):
+class CallbackManager:
     """CallbackManager is a global callback system designed to be a single place
     where Pika can manage callbacks and process them. It should be referenced
     by the CallbackManager.instance() method instead of constructing new
@@ -253,7 +253,7 @@ class CallbackManager(object):
         """
         if callback_value:
             offsets_to_remove = list()
-            for offset in xrange(len(self._stack[prefix][key]), 0, -1):
+            for offset in range(len(self._stack[prefix][key]), 0, -1):
                 callback_dict = self._stack[prefix][key][offset - 1]
 
                 if (callback_dict[self.CALLBACK] == callback_value and

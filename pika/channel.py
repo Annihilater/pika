@@ -14,7 +14,7 @@ import pika.frame as frame
 import pika.exceptions as exceptions
 import pika.spec as spec
 import pika.validators as validators
-from pika.compat import unicode_type, dictkeys, is_integer
+from pika.compat import as_bytes, dictkeys, is_integer
 from pika.exchange_type import ExchangeType
 
 LOGGER = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ LOGGER = logging.getLogger(__name__)
 MAX_CHANNELS = 65535  # per AMQP 0.9.1 spec.
 
 
-class Channel(object):
+class Channel:
     """A Channel is the primary communication method for interacting with
     RabbitMQ. It is recommended that you do not directly invoke the creation of
     a channel object in your application code but rather construct a channel by
@@ -102,7 +102,7 @@ class Channel(object):
         return self.channel_number
 
     def __repr__(self):
-        return '<%s number=%s %s conn=%r>' % (
+        return '<{} number={} {} conn={!r}>'.format(
             self.__class__.__name__, self.channel_number,
             self._STATE_NAMES[self._state], self.connection)
 
@@ -174,10 +174,10 @@ class Channel(object):
         :param callable callback: The function to call, having the signature
                                 callback(channel, method, properties, body)
                                 where
-                                 - channel: pika.channel.Channel
-                                 - method: pika.spec.Basic.Return
-                                 - properties: pika.spec.BasicProperties
-                                 - body: bytes
+                                - channel: pika.channel.Channel
+                                - method: pika.spec.Basic.Return
+                                - properties: pika.spec.BasicProperties
+                                - body: bytes
 
         """
         self.callbacks.add(self.channel_number, '_on_return', callback, False)
@@ -284,10 +284,10 @@ class Channel(object):
         :param callable on_message_callback: The function to call when
             consuming with the signature
             on_message_callback(channel, method, properties, body), where
-             - channel: pika.channel.Channel
-             - method: pika.spec.Basic.Deliver
-             - properties: pika.spec.BasicProperties
-             - body: bytes
+            - channel: pika.channel.Channel
+            - method: pika.spec.Basic.Deliver
+            - properties: pika.spec.BasicProperties
+            - body: bytes
         :param bool auto_ack: if set to True, automatic acknowledgement mode
             will be used (see http://www.rabbitmq.com/confirms.html).
             This corresponds with the 'no_ack' parameter in the basic.consume
@@ -359,10 +359,10 @@ class Channel(object):
             channel
         :param callable callback: The callback to call with a message that has
             the signature callback(channel, method, properties, body), where:
-             - channel: pika.channel.Channel
-             - method: pika.spec.Basic.GetOk
-             - properties: pika.spec.BasicProperties
-             - body: bytes
+            - channel: pika.channel.Channel
+            - method: pika.spec.Basic.GetOk
+            - properties: pika.spec.BasicProperties
+            - body: bytes
         :param bool auto_ack: Tell the broker to not expect a reply
         :raises ValueError:
 
@@ -421,8 +421,7 @@ class Channel(object):
 
         """
         self._raise_if_not_open()
-        if isinstance(body, unicode_type):
-            body = body.encode('utf-8')
+        body = as_bytes(body)
         properties = properties or spec.BasicProperties()
         self._send_method(
             spec.Basic.Publish(exchange=exchange,
@@ -1440,7 +1439,7 @@ class Channel(object):
         LOGGER.error('Unexpected frame: %r', frame_value)
 
 
-class ContentFrameAssembler(object):
+class ContentFrameAssembler:
     """Handle content related frames, building a message and return the message
     back in three parts upon receipt.
 

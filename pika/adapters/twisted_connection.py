@@ -39,7 +39,7 @@ class ClosableDeferredQueue(defer.DeferredQueue):
 
     def __init__(self, size=None, backlog=None):
         self.closed = None
-        super(ClosableDeferredQueue, self).__init__(size, backlog)
+        super().__init__(size, backlog)
 
     def put(self, obj):
         """
@@ -87,7 +87,7 @@ ReceivedMessage = namedtuple("ReceivedMessage",
                              ["channel", "method", "properties", "body"])
 
 
-class TwistedChannel(object):
+class TwistedChannel:
     """A wrapper around Pika's Channel.
 
     Channel methods that normally take a callback argument are wrapped to
@@ -303,12 +303,11 @@ class TwistedChannel(object):
 
         :param callable callback: The method to call on callback with the
             message as only argument. The message is a named tuple with
-            the following attributes:
-            channel: this TwistedChannel
-            method: pika.spec.Basic.Return
-            properties: pika.spec.BasicProperties
-            body: bytes
-
+            the following attributes
+            - channel: this TwistedChannel
+            - method: pika.spec.Basic.Return
+            - properties: pika.spec.BasicProperties
+            - body: bytes
         """
         self._channel.add_on_return_callback(
             lambda _channel, method, properties, body: callback(
@@ -402,10 +401,10 @@ class TwistedChannel(object):
             use its :meth:`get() <ClosableDeferredQueue.get>` method to fetch
             an individual message, which will return a Deferred firing with a
             namedtuple whose attributes are:
-             - channel: this TwistedChannel
-             - method: pika.spec.Basic.Deliver
-             - properties: pika.spec.BasicProperties
-             - body: bytes
+            - channel: this TwistedChannel
+            - method: pika.spec.Basic.Deliver
+            - properties: pika.spec.BasicProperties
+            - body: bytes
         :rtype: Deferred
 
         """
@@ -1051,7 +1050,7 @@ class _TwistedConnectionAdapter(pika.connection.Connection):
 
     def __init__(self, parameters, on_open_callback, on_open_error_callback,
                  on_close_callback, custom_reactor):
-        super(_TwistedConnectionAdapter, self).__init__(
+        super().__init__(
             parameters=parameters,
             on_open_callback=on_open_callback,
             on_open_error_callback=on_open_error_callback,

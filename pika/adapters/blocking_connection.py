@@ -36,7 +36,7 @@ from pika.exchange_type import ExchangeType
 LOGGER = logging.getLogger(__name__)
 
 
-class _CallbackResult(object):
+class _CallbackResult:
     """ CallbackResult is a non-thread-safe implementation for receiving
     callback results; INTERNAL USE ONLY!
     """
@@ -62,16 +62,13 @@ class _CallbackResult(object):
         self._values = None
 
     def __bool__(self):
-        """ Called by python runtime to implement truth value testing and the
-        built-in operation bool(); NOTE: python 3.x
+        """Called by python runtime to implement truth value testing and the
+        built-in operation bool()
         """
         return self.is_ready()
 
-    # python 2.x version of __bool__
-    __nonzero__ = __bool__
-
     def __enter__(self):
-        """ Entry into context manager that automatically resets the object
+        """Entry into context manager that automatically resets the object
         on exit; this usage pattern helps garbage-collection by eliminating
         potential circular references.
         """
@@ -94,7 +91,7 @@ class _CallbackResult(object):
         return self._ready
 
     def signal_once(self, *_args, **_kwargs):
-        """ Set as ready
+        """Set as ready
 
         :raises AssertionError: if result was already signalled
         """
@@ -102,7 +99,7 @@ class _CallbackResult(object):
         self._ready = True
 
     def set_value_once(self, *args, **kwargs):
-        """ Set as ready with value; the value may be retrieved via the `value`
+        """Set as ready with value; the value may be retrieved via the `value`
         property getter
 
         :raises AssertionError: if result was already set
@@ -169,7 +166,7 @@ class _CallbackResult(object):
         return self._values
 
 
-class _IoloopTimerContext(object):
+class _IoloopTimerContext:
     """Context manager for registering and safely unregistering a
     SelectConnection ioloop-based timer
     """
@@ -205,7 +202,7 @@ class _IoloopTimerContext(object):
         return self._callback_result.is_ready()
 
 
-class _TimerEvt(object):
+class _TimerEvt:
     """Represents a timer created via `BlockingConnection.call_later`"""
     __slots__ = ('timer_id', '_callback')
 
@@ -220,7 +217,7 @@ class _TimerEvt(object):
         self.timer_id = None
 
     def __repr__(self):
-        return '<%s timer_id=%s callback=%s>' % (self.__class__.__name__,
+        return '<{} timer_id={} callback={}>'.format(self.__class__.__name__,
                                                  self.timer_id, self._callback)
 
     def dispatch(self):
@@ -229,7 +226,7 @@ class _TimerEvt(object):
         self._callback()
 
 
-class _ConnectionBlockedUnblockedEvtBase(object):
+class _ConnectionBlockedUnblockedEvtBase:
     """Base class for `_ConnectionBlockedEvt` and `_ConnectionUnblockedEvt`"""
     __slots__ = ('_callback', '_method_frame')
 
@@ -245,7 +242,7 @@ class _ConnectionBlockedUnblockedEvtBase(object):
         self._method_frame = method_frame
 
     def __repr__(self):
-        return '<%s callback=%s, frame=%s>' % (
+        return '<{} callback={}, frame={}>'.format(
             self.__class__.__name__, self._callback, self._method_frame)
 
     def dispatch(self):
@@ -261,7 +258,7 @@ class _ConnectionUnblockedEvt(_ConnectionBlockedUnblockedEvtBase):
     """Represents a Connection.Unblocked notification from RabbitMQ broker`"""
 
 
-class BlockingConnection(object):
+class BlockingConnection:
     """The BlockingConnection creates a layer on top of Pika's asynchronous core
     providing methods that will block until their expected response has
     returned. Due to the asynchronous nature of the `Basic.Deliver` and
@@ -361,7 +358,7 @@ class BlockingConnection(object):
         self._impl.add_on_close_callback(self._closed_result.set_value_once)
 
     def __repr__(self):
-        return '<%s impl=%r>' % (self.__class__.__name__, self._impl)
+        return '<{} impl={!r}>'.format(self.__class__.__name__, self._impl)
 
     def __enter__(self):
         # Prepare `with` context
@@ -623,7 +620,7 @@ class BlockingConnection(object):
 
             # Limit dispatch to the number of currently ready events to avoid
             # getting stuck in this loop
-            for _ in compat.xrange(len(self._ready_events)):
+            for _ in range(len(self._ready_events)):
                 try:
                     evt = self._ready_events.popleft()
                 except IndexError:
@@ -670,7 +667,7 @@ class BlockingConnection(object):
         :param callable callback: Callback to call on Connection.Unblocked`,
             having the signature `callback(connection, pika.frame.Method)`,
             where connection is the `BlockingConnection` instance and the method
-             frame's `method` member is of type `pika.spec.Connection.Unblocked`
+            frame's `method` member is of type `pika.spec.Connection.Unblocked`
 
         """
         self._impl.add_on_connection_unblocked_callback(
@@ -961,7 +958,7 @@ class BlockingConnection(object):
     publisher_confirms = publisher_confirms_supported
 
 
-class _ChannelPendingEvt(object):
+class _ChannelPendingEvt:
     """Base class for BlockingChannel pending events"""
 
 
@@ -1001,7 +998,7 @@ class _ConsumerCancellationEvt(_ChannelPendingEvt):
         self.method_frame = method_frame
 
     def __repr__(self):
-        return '<%s method_frame=%r>' % (self.__class__.__name__,
+        return '<{} method_frame={!r}>'.format(self.__class__.__name__,
                                          self.method_frame)
 
     @property
@@ -1045,7 +1042,7 @@ class _ReturnedMessageEvt(_ChannelPendingEvt):
         self.callback(self.channel, self.method, self.properties, self.body)
 
 
-class ReturnedMessage(object):
+class ReturnedMessage:
     """Represents a message returned via Basic.Return in publish-acknowledgments
     mode
     """
@@ -1063,7 +1060,7 @@ class ReturnedMessage(object):
         self.body = body
 
 
-class _ConsumerInfo(object):
+class _ConsumerInfo:
     """Information about an active consumer"""
 
     __slots__ = ('consumer_tag', 'auto_ack', 'on_message_callback',
@@ -1129,7 +1126,7 @@ class _ConsumerInfo(object):
         return self.state == self.CANCELLED_BY_BROKER
 
 
-class _QueueConsumerGeneratorInfo(object):
+class _QueueConsumerGeneratorInfo:
     """Container for information about the active queue consumer generator """
     __slots__ = ('params', 'consumer_tag', 'pending_events')
 
@@ -1148,11 +1145,11 @@ class _QueueConsumerGeneratorInfo(object):
         self.pending_events = deque()
 
     def __repr__(self):
-        return '<%s params=%r consumer_tag=%r>' % (
+        return '<{} params={!r} consumer_tag={!r}>'.format(
             self.__class__.__name__, self.params, self.consumer_tag)
 
 
-class BlockingChannel(object):
+class BlockingChannel:
     """The BlockingChannel implements blocking semantics for most things that
     one would use callback-passing-style for with the
     :py:class:`~pika.channel.Channel` class. In addition,
@@ -1275,7 +1272,7 @@ class BlockingChannel(object):
         return self.channel_number
 
     def __repr__(self):
-        return '<%s impl=%r>' % (self.__class__.__name__, self._impl)
+        return '<{} impl={!r}>'.format(self.__class__.__name__, self._impl)
 
     def __enter__(self):
         return self
@@ -1586,10 +1583,10 @@ class BlockingChannel(object):
 
         :param callable callback: The method to call on callback with the
             signature callback(channel, method, properties, body), where
-             - channel: pika.Channel
-             - method: pika.spec.Basic.Return
-             - properties: pika.spec.BasicProperties
-             - body: bytes
+            - channel: pika.Channel
+            - method: pika.spec.Basic.Return
+            - properties: pika.spec.BasicProperties
+            - body: bytes
 
         """
         self._impl.add_on_return_callback(
@@ -1622,10 +1619,10 @@ class BlockingChannel(object):
         :param callable on_message_callback: Required function for dispatching messages
             to user, having the signature:
             on_message_callback(channel, method, properties, body)
-             - channel: BlockingChannel
-             - method: spec.Basic.Deliver
-             - properties: spec.BasicProperties
-             - body: bytes
+            - channel: BlockingChannel
+            - method: spec.Basic.Deliver
+            - properties: spec.BasicProperties
+            - body: bytes
         :param bool auto_ack: if set to True, automatic acknowledgement mode will be used
                               (see http://www.rabbitmq.com/confirms.html). This corresponds
                               with the 'no_ack' parameter in the basic.consume AMQP 0.9.1
@@ -1750,10 +1747,10 @@ class BlockingChannel(object):
             the cancellation (this is done instead of via consumer's callback in
             order to prevent reentrancy/recursion. Each message is four-tuple:
             (channel, method, properties, body)
-             - channel: BlockingChannel
-             - method: spec.Basic.Deliver
-             - properties: spec.BasicProperties
-             - body: bytes
+            - channel: BlockingChannel
+            - method: spec.Basic.Deliver
+            - properties: spec.BasicProperties
+            - body: bytes
         :rtype: list
         """
         try:
@@ -1910,7 +1907,7 @@ class BlockingChannel(object):
         Example:
         ::
             for method, properties, body in channel.consume('queue'):
-                print body
+                print(body)
                 channel.basic_ack(method.delivery_tag)
 
         You should call `BlockingChannel.cancel()` when you escape out of the
@@ -2093,7 +2090,7 @@ class BlockingChannel(object):
                 pending_events = self._queue_consumer_generator.pending_events
                 # NOTE `get_waiting_message_count` adjusts for `Basic.Cancel`
                 #      from the server at the end (if any)
-                for _ in compat.xrange(self.get_waiting_message_count()):
+                for _ in range(self.get_waiting_message_count()):
                     evt = pending_events.popleft()
                     self._impl.basic_reject(
                         evt.method.delivery_tag, requeue=True)

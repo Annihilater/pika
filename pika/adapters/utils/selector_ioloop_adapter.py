@@ -16,7 +16,7 @@ from pika.adapters.utils.io_services_utils import (check_callback_arg,
 LOGGER = logging.getLogger(__name__)
 
 
-class AbstractSelectorIOLoop(object):
+class AbstractSelectorIOLoop:
     """Selector-based I/O loop interface expected by
     `selector_ioloop_adapter.SelectorIOServicesAdapter`
 
@@ -406,7 +406,7 @@ class SelectorIOServicesAdapter(io_services_utils.SocketConnectionMixin,
                 pass
 
 
-class _FileDescriptorCallbacks(object):
+class _FileDescriptorCallbacks:
     """Holds reader and writer callbacks for a file descriptor"""
 
     __slots__ = ('reader', 'writer')
@@ -462,7 +462,7 @@ class _SelectorIOLoopIOHandle(nbio_interface.AbstractIOReference):
         return self._cancel()
 
 
-class _AddressResolver(object):
+class _AddressResolver:
     """Performs getaddrinfo asynchronously using a thread, then reports result
     via callback from the given I/O loop.
 
@@ -561,10 +561,9 @@ class _AddressResolver(object):
 
         """
         try:
-            # NOTE: on python 2.x, can't pass keyword args to getaddrinfo()
-            result = socket.getaddrinfo(self._host, self._port, self._family,
-                                        self._socktype, self._proto,
-                                        self._flags)
+            result = socket.getaddrinfo(host=self._host, port=self._port, family=self._family,
+                                        type=self._socktype, proto=self._proto,
+                                        flags=self._flags)
         except Exception as exc:  # pylint: disable=W0703
             LOGGER.error('Address resolution failed: %r', exc)
             result = exc

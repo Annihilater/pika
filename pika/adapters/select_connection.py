@@ -26,15 +26,12 @@ SELECT_TYPE = None
 # Reason for this unconventional dict initialization is the fact that on some
 # platforms select.error is an aliases for OSError. We don't want the lambda
 # for select.error to win over one for OSError.
-_SELECT_ERROR_CHECKERS = {}
-if pika.compat.PY3:
-    # InterruptedError is undefined in PY2
-    # pylint: disable=E0602
-    _SELECT_ERROR_CHECKERS[InterruptedError] = lambda e: True
-
-_SELECT_ERROR_CHECKERS[select.error] = lambda e: e.args[0] == errno.EINTR
-_SELECT_ERROR_CHECKERS[IOError] = lambda e: e.errno == errno.EINTR
-_SELECT_ERROR_CHECKERS[OSError] = lambda e: e.errno == errno.EINTR
+_SELECT_ERROR_CHECKERS = {
+    InterruptedError: lambda _: True,
+    select.error: lambda e: e.args[0] == errno.EINTR,
+    IOError: lambda e: e.errno == errno.EINTR,
+    OSError: lambda e: e.errno == errno.EINTR,
+}
 
 # We can reduce the number of elements in the list by looking at super-sub
 # class relationship because only the most generic ones needs to be caught.
@@ -98,7 +95,7 @@ class SelectConnection(BaseConnection):
         else:
             nbio = SelectorIOServicesAdapter(custom_ioloop or IOLoop())
 
-        super(SelectConnection, self).__init__(
+        super().__init__(
             parameters,
             on_open_callback,
             on_open_error_callback,
@@ -113,7 +110,7 @@ class SelectConnection(BaseConnection):
                           custom_ioloop=None,
                           workflow=None):
         """Implement
-        :py:classmethod:`pika.adapters.BaseConnection.create_connection()`.
+        :py:classmethod::`pika.adapters.BaseConnection.create_connection()`.
 
         """
         nbio = SelectorIOServicesAdapter(custom_ioloop or IOLoop())
@@ -143,7 +140,7 @@ class SelectConnection(BaseConnection):
         return self._transport.get_write_buffer_size()
 
 
-class _Timeout(object):
+class _Timeout:
     """Represents a timeout"""
 
     __slots__ = (
@@ -165,7 +162,7 @@ class _Timeout(object):
 
         if not callable(callback):
             raise TypeError(
-                'callback must be a callable, but got %r' % (callback,))
+                'callback must be a callable, but got {!r}'.format(callback))
 
         self.deadline = deadline
         self.callback = callback
@@ -208,7 +205,7 @@ class _Timeout(object):
         return NotImplemented
 
 
-class _Timer(object):
+class _Timer:
     """Manage timeouts for use in ioloop"""
 
     # Cancellation count threshold for triggering garbage collection of
@@ -252,7 +249,7 @@ class _Timer(object):
 
         if delay < 0:
             raise ValueError(
-                'call_later: delay must be non-negative, but got %r' % (delay,))
+                'call_later: delay must be non-negative, but got {!r}'.format(delay))
 
         now = pika.compat.time_now()
 
@@ -342,7 +339,7 @@ class _Timer(object):
                 heapq.heapify(self._timeout_heap)
 
 
-class PollEvents(object):
+class PollEvents:
     """Event flags for I/O"""
 
     # Use epoll's constants to keep life easy
@@ -470,7 +467,7 @@ class IOLoop(AbstractSelectorIOLoop):
         """
         if not callable(callback):
             raise TypeError(
-                'callback must be a callable, but got %r' % (callback,))
+                'callback must be a callable, but got {!r}'.format(callback))
 
         # NOTE: `deque.append` is atomic
         self._callbacks.append(callback)
@@ -489,7 +486,7 @@ class IOLoop(AbstractSelectorIOLoop):
 
         """
         # Avoid I/O starvation by postponing new callbacks to the next iteration
-        for _ in pika.compat.xrange(len(self._callbacks)):
+        for _ in range(len(self._callbacks)):
             callback = self._callbacks.popleft()
             LOGGER.debug('process_timeouts: invoking callback=%r', callback)
             callback()
@@ -913,7 +910,7 @@ class _PollerBase(pika.compat.AbstractBase):  # pylint: disable=R0902
         so use a pair of simple TCP sockets instead. The sockets will be
         closed and garbage collected by python when the ioloop itself is.
         """
-        return pika.compat._nonblocking_socketpair()  # pylint: disable=W0212
+        return pika.compat.nonblocking_socketpair()
 
     def _read_interrupt(self, _interrupt_fd, _events):
         """ Read the interrupt byte(s). We ignore the event mask as we can ony
@@ -1027,7 +1024,7 @@ class KQueuePoller(_PollerBase):
         """Create an instance of the KQueuePoller
         """
         self._kqueue = None
-        super(KQueuePoller, self).__init__(get_wait_seconds, process_timeouts)
+        super().__init__(get_wait_seconds, process_timeouts)
 
     @staticmethod
     def _map_event(kevent):
@@ -1164,7 +1161,7 @@ class PollPoller(_PollerBase):
 
         """
         self._poll = None
-        super(PollPoller, self).__init__(get_wait_seconds, process_timeouts)
+        super().__init__(get_wait_seconds, process_timeouts)
 
     @staticmethod
     def _create_poller():

@@ -68,8 +68,8 @@ channel.queue_bind(
 channel.basic_qos(prefetch_count=1)
 
 threads = []
-on_message_callback = functools.partial(on_message, args=(threads))
-channel.basic_consume('standard', on_message_callback)
+on_message_callback = functools.partial(on_message, args=(connection, threads))
+channel.basic_consume(on_message_callback=on_message_callback, queue='standard')
 
 try:
     channel.start_consuming()

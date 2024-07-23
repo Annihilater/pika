@@ -2,8 +2,6 @@
 Common validation functions
 """
 
-from pika.compat import basestring
-
 
 def require_string(value, value_name):
     """Require that value is a string
@@ -11,8 +9,8 @@ def require_string(value, value_name):
     :raises: TypeError
 
     """
-    if not isinstance(value, basestring):
-        raise TypeError('%s must be a str or unicode str, but got %r' % (
+    if not isinstance(value, str):
+        raise TypeError('{} must be a str or unicode str, but got {!r}'.format(
             value_name,
             value,
         ))
@@ -25,7 +23,7 @@ def require_callback(callback, callback_name='callback'):
 
     """
     if not callable(callback):
-        raise TypeError('callback %s must be callable, but got %r' % (
+        raise TypeError('callback {} must be callable, but got {!r}'.format(
             callback_name,
             callback,
         ))
@@ -59,5 +57,5 @@ def zero_or_greater(name, value):
 
     """
     if int(value) < 0:
-        errmsg = '{} must be >= 0, but got {}'.format(name, value)
+        errmsg = f'{name} must be >= 0, but got {value}'
         raise ValueError(errmsg)

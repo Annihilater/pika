@@ -11,6 +11,7 @@ import math
 import numbers
 import platform
 import ssl
+from urllib.parse import unquote as url_unquote, parse_qs as url_parse_qs, urlparse
 
 import pika.callback
 import pika.channel
@@ -21,19 +22,14 @@ import pika.frame as frame
 import pika.heartbeat
 import pika.spec as spec
 import pika.validators as validators
-from pika.compat import (
-    xrange,
-    url_unquote,
-    dictkeys,
-    dict_itervalues,
-    dict_iteritems)
+from pika.compat import (dictkeys, dict_itervalues, dict_iteritems)
 
 PRODUCT = "Pika Python Client Library"
 
 LOGGER = logging.getLogger(__name__)
 
 
-class Parameters(object):  # pylint: disable=R0902
+class Parameters:  # pylint: disable=R0902
     """Base connection parameters class definition
 
     """
@@ -190,7 +186,7 @@ class Parameters(object):  # pylint: disable=R0902
 
         """
         if not isinstance(value, numbers.Integral):
-            raise TypeError('channel_max must be an int, but got %r' % (value,))
+            raise TypeError('channel_max must be an int, but got {!r}'.format(value))
         if value < 1 or value > pika.channel.MAX_CHANNELS:
             raise ValueError('channel_max must be <= %i and > 0, but got %r' %
                              (pika.channel.MAX_CHANNELS, value))
@@ -244,7 +240,7 @@ class Parameters(object):  # pylint: disable=R0902
             raise TypeError('connection_attempts must be an int')
         if value < 1:
             raise ValueError(
-                'connection_attempts must be > 0, but got %r' % (value,))
+                'connection_attempts must be > 0, but got {!r}'.format(value))
         self._connection_attempts = value
 
     @property
@@ -287,7 +283,7 @@ class Parameters(object):  # pylint: disable=R0902
 
         """
         if not isinstance(value, numbers.Integral):
-            raise TypeError('frame_max must be an int, but got %r' % (value,))
+            raise TypeError('frame_max must be an int, but got {!r}'.format(value))
         if value < spec.FRAME_MIN_SIZE:
             raise ValueError('Min AMQP 0.9.1 Frame Size is %i, but got %r' % (
                 spec.FRAME_MIN_SIZE,
@@ -329,7 +325,7 @@ class Parameters(object):  # pylint: disable=R0902
                     'heartbeat must be an int or a callable function, but got %r'
                     % (value,))
             if not callable(value) and value < 0:
-                raise ValueError('heartbeat must >= 0, but got %r' % (value,))
+                raise ValueError('heartbeat must >= 0, but got {!r}'.format(value))
         self._heartbeat = value
 
     @property
@@ -388,7 +384,7 @@ class Parameters(object):  # pylint: disable=R0902
         try:
             self._port = int(value)
         except (TypeError, ValueError):
-            raise TypeError('port must be an int, but got %r' % (value,))
+            raise TypeError('port must be an int, but got {!r}'.format(value))
 
     @property
     def retry_delay(self):
@@ -409,7 +405,7 @@ class Parameters(object):  # pylint: disable=R0902
         """
         if not isinstance(value, numbers.Real):
             raise TypeError(
-                'retry_delay must be a float or int, but got %r' % (value,))
+                'retry_delay must be a float or int, but got {!r}'.format(value))
         self._retry_delay = value
 
     @property
@@ -435,7 +431,7 @@ class Parameters(object):  # pylint: disable=R0902
                                 'but got %r' % (value,))
             if value <= 0:
                 raise ValueError(
-                    'socket_timeout must be > 0, but got %r' % (value,))
+                    'socket_timeout must be > 0, but got {!r}'.format(value))
             value = float(value)
 
         self._socket_timeout = value
@@ -466,7 +462,7 @@ class Parameters(object):  # pylint: disable=R0902
                                 'but got %r' % (value,))
             if value <= 0:
                 raise ValueError(
-                    'stack_timeout must be > 0, but got %r' % (value,))
+                    'stack_timeout must be > 0, but got {!r}'.format(value))
             value = float(value)
 
         self._stack_timeout = value
@@ -488,7 +484,7 @@ class Parameters(object):  # pylint: disable=R0902
         """
         if not isinstance(value, (SSLOptions, type(None))):
             raise TypeError(
-                'ssl_options must be None or SSLOptions but got %r' % (value,))
+                'ssl_options must be None or SSLOptions but got {!r}'.format(value))
         self._ssl_options = value
 
     @property
@@ -527,20 +523,18 @@ class Parameters(object):  # pylint: disable=R0902
         """
         if not isinstance(value, (dict, type(None))):
             raise TypeError(
-                'tcp_options must be a dict or None, but got %r' % (value,))
+                'tcp_options must be a dict or None, but got {!r}'.format(value))
         self._tcp_options = value
 
 
 class ConnectionParameters(Parameters):
     """Connection parameters object that is passed into the connection adapter
-    upon construction.
-
-    """
+    upon construction."""
 
     # Protect against accidental assignment of an invalid attribute
     __slots__ = ()
 
-    class _DEFAULT(object):
+    class _DEFAULT:
         """Designates default parameter value; internal use"""
 
     def __init__( # pylint: disable=R0913,R0914
@@ -601,7 +595,7 @@ class ConnectionParameters(Parameters):
             RabbitMQ via `Connection.StartOk` method.
         :param tcp_options: None or a dict of TCP options to set for socket
         """
-        super(ConnectionParameters, self).__init__()
+        super().__init__()
 
         if blocked_connection_timeout is not self._DEFAULT:
             self.blocked_connection_timeout = blocked_connection_timeout
@@ -655,7 +649,7 @@ class ConnectionParameters(Parameters):
             self.tcp_options = tcp_options
 
         if kwargs:
-            raise TypeError('unexpected kwargs: %r' % (kwargs,))
+            raise TypeError('unexpected kwargs: {!r}'.format(kwargs))
 
 
 class URLParameters(Parameters):
@@ -724,20 +718,15 @@ class URLParameters(Parameters):
         :param str url: The URL value
 
         """
-        super(URLParameters, self).__init__()
+        super().__init__()
 
         self._all_url_query_values = None
 
         # Handle the Protocol scheme
-        #
-        # Fix up scheme amqp(s) to http(s) so urlparse won't barf on python
-        # prior to 2.7. On Python 2.6.9,
-        # `urlparse('amqp://127.0.0.1/%2f?socket_timeout=1')` produces an
-        # incorrect path='/%2f?socket_timeout=1'
         if url[0:4].lower() == 'amqp':
             url = 'http' + url[4:]
 
-        parts = pika.compat.urlparse(url)
+        parts = urlparse(url)
 
         if parts.scheme == 'https':
             # Create default context which will get overridden by the
@@ -769,13 +758,13 @@ class URLParameters(Parameters):
             self.virtual_host = url_unquote(parts.path.split('/')[1])
 
         # Handle query string values, validating and assigning them
-        self._all_url_query_values = pika.compat.url_parse_qs(parts.query)
+        self._all_url_query_values = url_parse_qs(parts.query)
 
         for name, value in dict_iteritems(self._all_url_query_values):
             try:
                 set_value = getattr(self, self._SETTER_PREFIX + name)
             except AttributeError:
-                raise ValueError('Unknown URL parameter: %r' % (name,))
+                raise ValueError('Unknown URL parameter: {!r}'.format(name))
 
             try:
                 (value,) = value
@@ -792,7 +781,7 @@ class URLParameters(Parameters):
             blocked_connection_timeout = float(value)
         except ValueError as exc:
             raise ValueError(
-                'Invalid blocked_connection_timeout value %r: %r' % (
+                'Invalid blocked_connection_timeout value {!r}: {!r}'.format(
                     value,
                     exc,
                 ))
@@ -803,7 +792,7 @@ class URLParameters(Parameters):
         try:
             channel_max = int(value)
         except ValueError as exc:
-            raise ValueError('Invalid channel_max value %r: %r' % (
+            raise ValueError('Invalid channel_max value {!r}: {!r}'.format(
                 value,
                 exc,
             ))
@@ -818,7 +807,7 @@ class URLParameters(Parameters):
         try:
             connection_attempts = int(value)
         except ValueError as exc:
-            raise ValueError('Invalid connection_attempts value %r: %r' % (
+            raise ValueError('Invalid connection_attempts value {!r}: {!r}'.format(
                 value,
                 exc,
             ))
@@ -829,7 +818,7 @@ class URLParameters(Parameters):
         try:
             frame_max = int(value)
         except ValueError as exc:
-            raise ValueError('Invalid frame_max value %r: %r' % (
+            raise ValueError('Invalid frame_max value {!r}: {!r}'.format(
                 value,
                 exc,
             ))
@@ -840,7 +829,7 @@ class URLParameters(Parameters):
         try:
             heartbeat_timeout = int(value)
         except ValueError as exc:
-            raise ValueError('Invalid heartbeat value %r: %r' % (
+            raise ValueError('Invalid heartbeat value {!r}: {!r}'.format(
                 value,
                 exc,
             ))
@@ -855,7 +844,7 @@ class URLParameters(Parameters):
         try:
             retry_delay = float(value)
         except ValueError as exc:
-            raise ValueError('Invalid retry_delay value %r: %r' % (
+            raise ValueError('Invalid retry_delay value {!r}: {!r}'.format(
                 value,
                 exc,
             ))
@@ -866,7 +855,7 @@ class URLParameters(Parameters):
         try:
             socket_timeout = float(value)
         except ValueError as exc:
-            raise ValueError('Invalid socket_timeout value %r: %r' % (
+            raise ValueError('Invalid socket_timeout value {!r}: {!r}'.format(
                 value,
                 exc,
             ))
@@ -877,7 +866,7 @@ class URLParameters(Parameters):
         try:
             stack_timeout = float(value)
         except ValueError as exc:
-            raise ValueError('Invalid stack_timeout value %r: %r' % (
+            raise ValueError('Invalid stack_timeout value {!r}: {!r}'.format(
                 value,
                 exc,
             ))
@@ -891,8 +880,8 @@ class URLParameters(Parameters):
         if opts is None:
             if self.ssl_options is not None:
                 raise ValueError(
-                    'Specified ssl_options=None URL arg is inconsistent with '
-                    'the specified https URL scheme.')
+                    'Specified ssl_options=None URI arg is inconsistent with '
+                    'the specified amqps URI scheme.')
         else:
             # Older versions of Pika would take the opts dict and pass it
             # directly as kwargs to the deprecated ssl.wrap_socket method.
@@ -936,7 +925,7 @@ class URLParameters(Parameters):
         self.tcp_options = ast.literal_eval(value)
 
 
-class SSLOptions(object):
+class SSLOptions:
     """Class used to provide parameters for optional fine grained control of SSL
     socket wrapping.
 
@@ -1685,7 +1674,7 @@ class Connection(pika.compat.AbstractBase):
         if len(self._channels) >= limit:
             raise exceptions.NoFreeChannels()
 
-        for num in xrange(1, len(self._channels) + 1):
+        for num in range(1, len(self._channels) + 1):
             if num not in self._channels:
                 return num
         return len(self._channels) + 1
@@ -2277,7 +2266,7 @@ class Connection(pika.compat.AbstractBase):
 
         if content[1]:
             chunks = int(math.ceil(float(length) / self._body_max_length))
-            for chunk in xrange(0, chunks):
+            for chunk in range(0, chunks):
                 start = chunk * self._body_max_length
                 end = start + self._body_max_length
                 if end > length:
